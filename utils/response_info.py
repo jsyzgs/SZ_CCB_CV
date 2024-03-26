@@ -1,3 +1,11 @@
-from enum import Enum
+from enum import Enum,unique
 
-class
+@unique
+class RetMsg(Enum):
+    SUCCEED = "执行成功"
+    FAILED = "执行异常"
+
+@unique
+class RetCode(Enum):
+    SUCCEED = "00"
+    FAILED = "01"

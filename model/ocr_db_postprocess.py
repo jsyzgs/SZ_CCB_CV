@@ -122,10 +122,14 @@ class DBPostProcess(object):
         '''
         h, w = bitmap.shape[:2]
         box = _box.copy()
-        xmin = np.clip(np.floor(box[:, 0].min()).astype(np.int), 0, w - 1)
-        xmax = np.clip(np.ceil(box[:, 0].max()).astype(np.int), 0, w - 1)
-        ymin = np.clip(np.floor(box[:, 1].min()).astype(np.int), 0, h - 1)
-        ymax = np.clip(np.ceil(box[:, 1].max()).astype(np.int), 0, h - 1)
+        if np.__version__>='1.22':
+            type_int = np.int_
+        else:
+            type_int = np.int
+        xmin = np.clip(np.floor(box[:, 0].min()).astype(type_int), 0, w - 1)
+        xmax = np.clip(np.ceil(box[:, 0].max()).astype(type_int), 0, w - 1)
+        ymin = np.clip(np.floor(box[:, 1].min()).astype(type_int), 0, h - 1)
+        ymax = np.clip(np.ceil(box[:, 1].max()).astype(type_int), 0, h - 1)
 
         mask = np.zeros((ymax - ymin + 1, xmax - xmin + 1), dtype=np.uint8)
         box[:, 0] = box[:, 0] - xmin
@@ -203,14 +207,14 @@ class DistillationDBPostProcess(object):
         return results
 
 
-postprocess_params = {}
-postprocess_params['name'] = 'DBPostProcess'
-postprocess_params["thresh"] = 0.3  # args.det_db_thresh
-postprocess_params["box_thresh"] = 0.6  # args.det_db_box_thresh
-postprocess_params["max_candidates"] = 1000
-postprocess_params["unclip_ratio"] = 1.5  # args.det_db_unclip_ratio
-postprocess_params["use_dilation"] = False  # args.use_dilation
-postprocess_params["score_mode"] = 'fast'  # args.det_db_score_mode
+# postprocess_params = {}
+# postprocess_params['name'] = 'DBPostProcess'
+# postprocess_params["thresh"] = 0.3  # args.det_db_thresh
+# postprocess_params["box_thresh"] = 0.6  # args.det_db_box_thresh
+# postprocess_params["max_candidates"] = 1000
+# postprocess_params["unclip_ratio"] = 1.5  # args.det_db_unclip_ratio
+# postprocess_params["use_dilation"] = False  # args.use_dilation
+# postprocess_params["score_mode"] = 'fast'  # args.det_db_score_mode
 
-db_postprocess = DBPostProcess()
+db_postprocess = DBPostProcess(unclip_ratio=2.5)
 

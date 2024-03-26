@@ -3,7 +3,8 @@ import string
 import os
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
-print('this is {}'.format(__dir__))
+# print('this is {}'.format(__dir__))
+
 
 class BaseRecLabelDecode(object):
     """ Convert between text-label and text-index """
@@ -69,8 +70,8 @@ class BaseRecLabelDecode(object):
                     continue
                 if is_remove_duplicate:
                     # only for predict
-                    if idx > 0 and text_index[batch_idx][idx - 1] == text_index[
-                            batch_idx][idx]:
+                    if idx > 0 and text_index[batch_idx][idx -
+                                                         1] == text_index[batch_idx][idx]:
                         continue
                 char_list.append(self.character[int(text_index[batch_idx][
                     idx])])
@@ -113,9 +114,11 @@ class CTCLabelDecode(BaseRecLabelDecode):
         return dict_character
 
 
-postprocess_params = {"character_type": "ch",
-                      "character_dict_path": os.path.join(__dir__,'ppocr_keys_v1.txt'),
-                      "use_space_char": True
-                      }
+postprocess_params = {
+    "character_type": "ch",
+    "character_dict_path": os.path.join(
+        __dir__,
+        'ppocr_keys_v1.txt'),
+    "use_space_char": True}
 
 rec_postprocess = CTCLabelDecode(**postprocess_params)

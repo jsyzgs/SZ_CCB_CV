@@ -16,8 +16,9 @@ class ClsPostProcess(object):
         label = [(self.label_list[idx], 1.0) for idx in label]
         return decode_out, label
 
+
 postprocess_params = {
-            'name': 'ClsPostProcess',
+    'name': 'ClsPostProcess',
             "label_list": ['0', '180'],
-        }
+}
 cls_postprocess = ClsPostProcess(['0', '180'])

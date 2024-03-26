@@ -74,7 +74,7 @@ class DetResizeForTest(object):
             else:
                 ratio = 1.
         elif self.limit_type == 'resize_long':
-            ratio = float(limit_side_len) / max(h,w)
+            ratio = float(limit_side_len) / max(h, w)
         else:
             raise Exception('not support limit type, image ')
         resize_h = int(h * ratio)
@@ -87,7 +87,7 @@ class DetResizeForTest(object):
             if int(resize_w) <= 0 or int(resize_h) <= 0:
                 return None, (None, None)
             img = cv2.resize(img, (int(resize_w), int(resize_h)))
-        except:
+        except BaseException:
             print(img.shape, resize_w, resize_h)
             sys.exit(0)
         ratio_h = resize_h / float(h)
@@ -117,57 +117,15 @@ class DetResizeForTest(object):
 
         return img, [ratio_h, ratio_w]
 
-db_resize_dict = {'limit_side_len': 960,'limit_type': 'max',}
+
+db_resize_dict = {'limit_side_len': 960, 'limit_type': 'max', }
 db_resize = DetResizeForTest(**db_resize_dict)
 
-class DetResizeForTestDvpp(object):
-    def __init__(self, **kwargs):
-        super(DetResizeForTestDvpp, self).__init__()
-        self.resize_type = 0
-        if 'limit_side_len' in kwargs:
-            self.limit_side_len = kwargs['limit_side_len']
-            self.limit_type = kwargs.get('limit_type', 'min')
-
-    def __call__(self, data):
-        img = data['image']
-        src_h,src_w = int(img.height/2)*2,int(img.width/16)*16 # AclImage
-
-        if self.resize_type == 0:
-
-            [resize_h, resize_w] = self.resize_image_type0(img)
-            data['shape'] = np.array([src_h, src_w, resize_h, resize_w])
-            return data
-
-    def resize_image_type0(self,img):
-        limit_side_len = self.limit_side_len
-        h, w = img.height,img.width
-        # limit the max side
-        if self.limit_type == 'max':
-            if max(h, w) > limit_side_len:
-                if h > w:
-                    ratio = float(limit_side_len) / h
-                else:
-                    ratio = float(limit_side_len) / w
-            else:
-                ratio = 1.
-        else:
-            raise Exception('not support limit type, image ')
-
-        resize_h = int(h * ratio)
-        resize_w = int(w * ratio)
-
-        resize_h = max(int(round(resize_h / 2) * 2), 2)
-        resize_w = max(int(round(resize_w / 16) * 16), 16)
-
-        ratio_h = resize_h / float(h)
-        ratio_w = resize_w / float(w)
-        return [resize_h,resize_w]
+db_resize_dict_v2_server = {'limit_side_len': 640,'limit_type': 'max',}
+db_resize_v2_server = DetResizeForTest(**db_resize_dict_v2_server)
 
 
-
-db_resize_dvpp = DetResizeForTestDvpp(**db_resize_dict)
-
-def alian_width_height(width,height):
-    new_width = width>>4<<4 # 16对齐
-    new_height = height>>1<<1 # 2对齐
-    return (new_width,new_height)
+def alian_width_height(width, height):
+    new_width = width >> 4 << 4  # 16对齐
+    new_height = height >> 1 << 1  # 2对齐
+    return (new_width, new_height)
