@@ -122,3 +122,9 @@ def oob_put_storage_draw_result(
     byte_data = img_buffer.getvalue()
     base64_str = base64.b64encode(byte_data).decode('utf-8')
     return base64_str
+
+def binary_img_ocr(bgr_3d_array):
+    gray = cv2.cvtColor(bgr_3d_array, cv2.COLOR_BGR2GRAY)
+    gray = cv2.medianBlur(gray, 5)
+    ret, binary_img = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
+    return binary_img

@@ -1,6 +1,7 @@
 import numpy as np
 import tritonclient.http as httpclient
 from PIL import Image
+from sklearn import preprocessing
 
 from model import triton_http_client
 
@@ -50,12 +51,33 @@ class FaceRecognition():
         return result
 
 
+def get_feature_2d_array(tensor):
+    feature_2d_array = preprocessing.normalize(tensor)
+    return feature_2d_array
+
+
 model_sphereface = FaceRecognition(
     'sphereface_onnx', '1', 'input', [
         1, 3, 112, 96], 'fc5_Gemm_Y')
 
 if __name__ == '__main__':
+    import cv2
+    from cv2 import dnn
+    from copy import deepcopy
+
     pil_image = Image.open('/hostmount/errorPicture/20190819_163759_6037.jpg')
+    new_image = deepcopy(pil_image).resize(
+        (96, 112), Image.BILINEAR)
+    rgb_3d_array = np.array(new_image)
+    bgr_3d_array = rgb_3d_array[..., ::-1] #rgb2bgr
+    blob = dnn.blobFromImage(bgr_3d_array, 0.0078125, (96, 112), (127.5, 127.5, 127.5))
+    net = dnn.readNetFromCaffe('/hostmount/sphereface_model/sphereface.prototxt',
+                               '/hostmount/sphereface_model/sphereface.caffemodel')
+    net.setInput(blob)
+    result_dnn = net.forward()
+
+
+
     tensor = model_sphereface.preprocess(pil_image)
     result = model_sphereface.excute(tensor)
     result = model_sphereface.postprocess(result)
