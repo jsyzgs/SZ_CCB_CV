@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from app.views import face_blueprint
 from app.coffer_cv.service.retrieve_face_service import retrieve_face_service
+from app.coffer_cv.service.extract_face_feats_service import extract_face_feats_service
 from utils.response_info import RetCode, RetMsg
 from utils.log import flask_log
 
@@ -35,7 +36,13 @@ def extract_face_feats():
     uuid = uuid4().hex
     try:
         if request.method == 'POST':
-            ...
+            image_base64 = request.json.get('image')
+            response_json_data = extract_face_feats_service(uuid,image_base64)
+            return jsonify(
+                retCode=RetCode.SUCCEED.value,
+                retMsg=RetMsg.SUCCEED.value,
+                data=response_json_data)
+
     except Exception:
         flask_log.error('uuid:{},{}'.format(uuid, traceback.format_exc()))
         return jsonify(
