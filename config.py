@@ -25,3 +25,9 @@ class Config:
 
     CLASS_LABELS = ['coin_0.1', 'coin_0.5','coin_1']
     VERIFY_LABELS = ['s_5', 's_10','s_20','s_50','s_100']
+    QRCODE_LABELS = ['qrcode']
+    LABELS = ["s_100","s_50","s_20","s_10","s_5",
+           "b_100","b_50","b_20","b_10","b_5",
+           "y",
+           "coin_1","coin_0.5","coin_0.1"]
+

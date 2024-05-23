@@ -8,6 +8,9 @@ from PIL import Image
 import grpc
 from tritonclient.grpc import service_pb2, service_pb2_grpc
 
+from model import triton_http_client
+from config import Config
+
 
 def letterbox(
         im,
@@ -196,12 +199,243 @@ def parse_model(model_metadata, model_config):
     )
 
 
-if __name__ == '__main__':
-    def resize_img(img,*model_info):
-        c,h,w = 3,*model_info
-        print(h,w)
-    resize_img(1,66,666)
+def xywh2xyxy(x):
+    # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where
+    # xy1=top-left, xy2=bottom-right
+    y = np.copy(x)
+    y[:, 0] = x[:, 0] - x[:, 2] / 2  # top left x
+    y[:, 1] = x[:, 1] - x[:, 3] / 2  # top left y
+    y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x
+    y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y
+    return y
 
+
+def box_area(boxes):
+    return (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+
+
+def box_iou(box1, box2):
+    area1 = box_area(box1)  # N
+    area2 = box_area(box2)  # M
+    # broadcasting, 两个数组各维度大小 从后往前对比一致， 或者 有一维度值为1；
+    lt = np.maximum(box1[:, np.newaxis, :2], box2[:, :2])
+    rb = np.minimum(box1[:, np.newaxis, 2:], box2[:, 2:])
+    wh = rb - lt
+    wh = np.maximum(0, wh)  # [N, M, 2]
+    inter = wh[:, :, 0] * wh[:, :, 1]
+    iou = inter / (area1[:, np.newaxis] + area2 - inter)
+    return iou  # NxM
+
+
+def numpy_nms(boxes, scores, iou_threshold):
+    idxs = scores.argsort()  # 按分数 降序排列的索引 [N]
+    keep = []
+    while idxs.size > 0:  # 统计数组中元素的个数
+        max_score_index = idxs[-1]
+        max_score_box = boxes[max_score_index][None, :]
+        keep.append(max_score_index)
+        if idxs.size == 1:
+            break
+        idxs = idxs[:-1]  # 将得分最大框 从索引中删除； 剩余索引对应的框 和 得分最大框 计算IoU；
+        other_boxes = boxes[idxs]  # [?, 4]
+        ious = box_iou(max_score_box, other_boxes)  # 一个框和其余框比较 1XM
+        idxs = idxs[ious[0] <= iou_threshold]
+    keep = np.array(keep)
+    return keep
+
+
+def clip_boxes(boxes, shape):
+    # Clip boxes (xyxy) to image shape (height, width)
+    # np.array (faster grouped)
+    boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, shape[1])  # x1, x2
+    boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, shape[0])  # y1, y2
+
+
+def scale_boxes(img1_shape, boxes, img0_shape, ratio_pad=None):
+    # Rescale boxes (xyxy) from img1_shape to img0_shape
+    if ratio_pad is None:  # calculate from img0_shape
+        gain = min(
+            img1_shape[0] /
+            img0_shape[0],
+            img1_shape[1] /
+            img0_shape[1])  # gain  = old / new
+        pad = (img1_shape[1] - img0_shape[1] * gain) / \
+            2, (img1_shape[0] - img0_shape[0] * gain) / 2  # wh padding
+    else:
+        gain = ratio_pad[0][0]
+        pad = ratio_pad[1]
+
+    boxes[:, [0, 2]] -= pad[0]  # x padding
+    boxes[:, [1, 3]] -= pad[1]  # y padding
+    boxes[:, :4] /= gain
+    clip_boxes(boxes, img0_shape)
+    return boxes
+
+
+def xyxy2xywh(x):
+    # Convert 1x4 boxes from [x1, y1, x2, y2] to [x, y, w, h] where
+    # x1y1=top,left, x2y2=bottom,right
+    y = np.copy(x)
+    y[0] = x[0]  # x1
+    y[1] = x[1]  # y1
+    y[2] = x[2] - x[0]  # width
+    y[3] = x[3] - x[1]  # height
+    return y
+
+
+class ObjectDetection():
+    def __init__(
+            self,
+            model_name,
+            model_version,
+            input_name,
+            input_shape,
+            output_name,
+            input_date_type='FP32', classes=Config.QRCODE_LABELS):
+        self.model_name = model_name
+        self.model_version = model_version
+        self.input_name = input_name
+        self.input_shape = input_shape
+        self.output_name = output_name
+        self.input_date_type = input_date_type
+        self.names = {i: ele for i, ele in enumerate(classes)}
+
+    def preprocess(self, bgr_3d_array):
+        im = letterbox(
+            bgr_3d_array, [
+                1280, 1280], stride=32, scaleFill=False, auto=False)[0]  # padded resize
+        im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        im = np.ascontiguousarray(im)  # contiguous
+        im = im.astype(np.float32)
+        im = im / 255
+
+        if len(im.shape) == 3:
+            im = im[None]  # expand for batch dim
+
+        return im
+
+    def excute(self, tensor, triton_client=triton_http_client):
+        input = httpclient.InferInput(
+            self.input_name, self.input_shape, datatype=self.input_date_type)
+        input.set_data_from_numpy(tensor, binary_data=True)
+        response = triton_client.infer(
+            model_name=self.model_name, inputs=[input])
+        result = response.as_numpy(self.output_name)
+        return result
+
+    def postprocess(self, excute_result, tensor, bgr_3d_array,
+                    conf_thres=0.1,
+                    iou_thres=0.45,
+                    nm=0,
+                    max_det=1000,
+                    agnostic=True):
+        '''
+                prediction -> (batch,channel,width,height)
+                '''
+        prediction = excute_result
+        bs = prediction.shape[0]  # batch size
+        nc = prediction.shape[2] - nm - 5  # number of classes
+        xc = prediction[..., 4] > conf_thres  # candidates
+
+        max_wh = 7680  # (pixels) maximum box width and height
+        max_nms = 30000  # maximum number of boxes into nms()
+        # redundant = True  # require redundant detections
+        # merge = False
+        mi = 5 + nc  # mask start index
+        output = [np.zeros((0, 6 + nm))] * bs
+
+        for xi, x in enumerate(prediction):  # image index, image inference
+            # Apply constraints
+            # x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] =
+            # 0  # width-height
+            x = x[xc[xi]]  # confidence
+
+            # If none remain process next image
+            if not x.shape[0]:
+                continue
+
+            # Compute conf
+            x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
+            # Box/Mask
+            # center_x, center_y, width, height) to (x1, y1, x2, y2)
+            box = xywh2xyxy(x[:, :4])
+            mask = x[:, mi:]  # zero columns if no masks
+            temp = x[:, 5:mi]
+            conf = temp.max(1)
+            conf = np.expand_dims(conf, axis=1)
+            j = np.argmax(temp, axis=1)
+            j = np.expand_dims(j, axis=1)
+
+            if len(box) == 1:
+                x = np.concatenate((box, conf, j, mask), axis=1)
+            else:
+                x = np.concatenate((box, conf, j, mask), axis=1)[
+                    conf.squeeze() > conf_thres]
+            n = x.shape[0]
+
+            if not n:  # no boxes
+                continue
+            elif n > max_nms:  # excess boxes
+                # sort by confidence
+                x = x[np.lexsort(-x.T[4, None])][:max_nms]
+            else:
+                x = x[np.lexsort(-x.T[4, None])]  # sort by confidence
+
+            # Batched NMS
+            c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
+            boxes, scores = x[:, :4] + c, x[:, 4]
+            i = numpy_nms(boxes, scores, iou_thres)
+            if i.shape[0] > max_det:  # limit detections
+                i = i[:max_det]
+
+            output[xi] = x[i]
+
+        pred = output
+        # Process predictions
+
+        result_list = []
+        return_dict = {}
+        for i, det in enumerate(pred):
+            if len(det):
+                det[:, :4] = scale_boxes(
+                    tensor.shape[2:], det[:, :4], bgr_3d_array.shape)
+                # Write results
+                for *xyxy, conf, cls in reversed(det):
+                    c = int(cls)
+                    xywh = xyxy2xywh(xyxy)
+                    result_list.append({'score': conf,
+                                        'locations': {'left': int(xywh[0]),
+                                                      'top': int(xywh[1]),
+                                                      'width': int(xywh[2]),
+                                                      'height': int(xywh[3])},
+                                        'name': self.names[c]})
+        return_dict["results"] = result_list
+        return return_dict
+
+    def infer(self, bgr_3d_array):
+        tensor = self.preprocess(bgr_3d_array)
+        excute_result = self.excute(tensor)
+        result = self.postprocess(excute_result, tensor, bgr_3d_array)
+        return result
+
+
+model_vm = ObjectDetection(
+    'yolov5m_onnx', '1', 'images', [
+        1, 3, 1280, 1280], 'output0', classes=Config.LABELS)
+
+model_qrcode = ObjectDetection('yolov5s_onnx', '1', 'images', [
+    1, 3, 640, 640], 'output0', classes=Config.QRCODE_LABELS)
+
+
+if __name__ == '__main__':
+
+    bgr_3d_array = cv2.imread('/hostmount/errorPicture/boxMat_095908.jpg')
+    result = model_vm.infer(bgr_3d_array)
+
+    def resize_img(img, *model_info):
+        c, h, w = 3, *model_info
+        print(h, w)
+    resize_img(1, 66, 666)
 
     triton_client = httpclient.InferenceServerClient(url='10.2.72.189:8000')
     # channel = grpc.insecure_channel('10.2.72.189:8001')
