@@ -64,7 +64,7 @@ class OcrRec():
 def resize_norm_img(img, max_wh_ratio, *model_info):
     imgC, imgH, imgW = 3, *model_info
     assert imgC == img.shape[2]
-    imgW = int((imgH * max_wh_ratio))
+    # imgW = int((imgH * max_wh_ratio))
     h, w = img.shape[:2]
     ratio = w / float(h)
     if math.ceil(imgH * ratio) > imgW:
@@ -84,6 +84,9 @@ def resize_norm_img(img, max_wh_ratio, *model_info):
 model_ppocr_v2_rec = OcrRec(
     'new_ppocr_rec_v3_onnx', '1', 'x', [
         3, 48, 320], 'softmax_5.tmp_0')
+model_ppocr_v2_rec_slim = OcrRec(
+    'ppocr_rec_v2_slim_onnx', '1', 'x', [
+        3, 32, 100], 'save_infer_model/scale_0.tmp_1')
 if __name__ == '__main__':
     cv_img_list = []
     for i in range(3):
