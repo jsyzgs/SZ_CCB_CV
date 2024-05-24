@@ -2,9 +2,9 @@ import cv2
 import copy
 import numpy as np
 
-from model.ppocr_v2_det import model_ppocr_v2_det
+from model.ppocr_v2_det import (model_ppocr_v2_det, model_ppocr_v2_det_slim)
 from model.ppocr_v2_cls import model_ppocr_v2_cls
-from model.ppocr_v2_rec import model_ppocr_v2_rec
+from model.ppocr_v2_rec import (model_ppocr_v2_rec, model_ppocr_v2_rec_slim)
 
 
 class OcrSys():
@@ -54,7 +54,7 @@ class OcrSys():
             ori_im, scale = self.resize_image_keep_aspect(ori_im)
 
         dt_boxes = self.det_model.infer(ori_im)
-        if dt_boxes is None:
+        if len(dt_boxes) == 0:
             return None, None
 
         img_crop_list = []
@@ -157,7 +157,15 @@ def get_rotate_crop_image(img, points):
         dst_img = np.rot90(dst_img)
     return dst_img
 
-model_ppocr_v3_sys = OcrSys(model_ppocr_v2_det,model_ppocr_v2_cls,model_ppocr_v2_rec)
+
+model_ppocr_v3_sys = OcrSys(
+    model_ppocr_v2_det,
+    model_ppocr_v2_cls,
+    model_ppocr_v2_rec)
+model_ppocr_v2_sys = OcrSys(
+    model_ppocr_v2_det_slim,
+    model_ppocr_v2_cls,
+    model_ppocr_v2_rec_slim,cls_thresh=0.9)
 if __name__ == '__main__':
     cv_img = cv2.imread('/hostmount/errorPicture/rh1.jpg')
     model_ppocr_v3_sys(cv_img)
