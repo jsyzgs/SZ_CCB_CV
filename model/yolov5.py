@@ -302,8 +302,7 @@ class ObjectDetection():
 
     def preprocess(self, bgr_3d_array):
         im = letterbox(
-            bgr_3d_array, [
-                1280, 1280], stride=32, scaleFill=False, auto=False)[0]  # padded resize
+            bgr_3d_array, self.input_shape[2:], stride=32, scaleFill=False, auto=False)[0]  # padded resize
         im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
         im = np.ascontiguousarray(im)  # contiguous
         im = im.astype(np.float32)
@@ -423,14 +422,15 @@ model_vm = ObjectDetection(
     'yolov5m_onnx', '1', 'images', [
         1, 3, 1280, 1280], 'output0', classes=Config.LABELS)
 
+
 model_qrcode = ObjectDetection('yolov5s_onnx', '1', 'images', [
     1, 3, 640, 640], 'output0', classes=Config.QRCODE_LABELS)
 
 
 if __name__ == '__main__':
 
-    bgr_3d_array = cv2.imread('/hostmount/errorPicture/boxMat_095908.jpg')
-    result = model_vm.infer(bgr_3d_array)
+    bgr_3d_array = cv2.imread('/hostmount/errorPicture/rh1.jpg')
+    result = model_qrcode.infer(bgr_3d_array)#model_vm.infer(bgr_3d_array)
 
     def resize_img(img, *model_info):
         c, h, w = 3, *model_info

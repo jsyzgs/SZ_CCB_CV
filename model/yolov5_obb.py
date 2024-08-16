@@ -50,6 +50,7 @@ class Detection():
         return result
 
     def postprocess(self, excute_result, tensor, bgr_3d_array):
+        #TODO:后处理应替换为pytorch编译的.so文件！
         pred = non_max_suppression_obb(
             prediction=excute_result,
             iou_thres=0.2,

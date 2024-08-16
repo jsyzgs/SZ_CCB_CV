@@ -18,16 +18,30 @@ class Config:
                          'y': '倾倒钱捆'}
 
     OBB_LABELS = ['s_100', 's_50', 's_20', 's_10', 's_5',
-              'b_100', 'b_50', 'b_20', 'b_10', 'b_5',
-              'bundle',
-              'coin_1', 'coin_0.1',
-              'y']
+                  'b_100', 'b_50', 'b_20', 'b_10', 'b_5',
+                  'bundle',
+                  'coin_1', 'coin_0.1',
+                  'y']
 
-    CLASS_LABELS = ['coin_0.1', 'coin_0.5','coin_1']
-    VERIFY_LABELS = ['s_5', 's_10','s_20','s_50','s_100']
+    CLASS_LABELS = ['coin_0.1', 'coin_0.5', 'coin_1']
+    VERIFY_LABELS = ['s_5', 's_10', 's_20', 's_50', 's_100']
     QRCODE_LABELS = ['qrcode']
-    LABELS = ["s_100","s_50","s_20","s_10","s_5",
-           "b_100","b_50","b_20","b_10","b_5",
-           "y",
-           "coin_1","coin_0.5","coin_0.1"]
-
+    LABELS = ["s_100", "s_50", "s_20", "s_10", "s_5",
+              "b_100", "b_50", "b_20", "b_10", "b_5",
+              "y",
+              "coin_1", "coin_0.5", "coin_0.1"]
+    CHINESE_WITH_CURRENCY = {
+        "侠": "50",
+        "俊": "100",
+        "伶": "20",
+        "优": "10",
+        "扣": "5",
+        "仙": "5",
+        "抚": "10"}
+    MONEY_TO_ALPHABET = {
+        "100": "A",
+        "50": "B",
+        "20": "C",
+        "10": "D",
+        "5": "E",
+        "1": "F"}

@@ -1,17 +1,6 @@
-from utils.image_utils import open_image_by_cv2
+from app.coffer_cv.bussiness.recognize_box_code_business import recognize_box_code_business
 
 
 def recognize_box_code_service(image_base64, uuid):
-    image = open_image_by_cv2(
-        uuid=uuid,
-        imageBase64=image_base64,
-        imagePath='')
-    data = {
-        "boxType": None,
-        "condition": None,
-        "boxNo": None,
-        "qrcodeData": None,
-        "MD5": None}
-    boxNo = ""
-    boxData = ""
-    condition = False
+    response_data = recognize_box_code_business(uuid, image_base64)
+    return response_data

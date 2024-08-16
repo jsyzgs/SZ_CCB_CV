@@ -98,6 +98,8 @@ def restore_points(dt_boxes, shape_list):
 model_ppocr_v2_det = OcrDetServer(
     'ppocr_det_v2_server_onnx', '1', 'x', [
         1, 3, 640, 640], 'sigmoid_0.tmp_0')
+model_ppocr_v2_det_slim = OcrDetServer('ppocr_det_v2_onnx', '1', 'x', [
+    1, 3, 960, 960], 'save_infer_model/scale_0.tmp_1')
 if __name__ == '__main__':
     bgr_3d_array = cv2.imread('/hostmount/errorPicture/nature_test.jpg')
     result = model_ppocr_v2_det.infer(bgr_3d_array)
